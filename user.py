@@ -1,22 +1,16 @@
 import sqlite3
 import bcrypt
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 from datetime import datetime
 
-app = Flask(__name__)
-DB_FILE = 'users.db'  # SQLite database file
+app = Flask(__name__, template_folder="templates", static_folder="static")
+CORS(app)
 
-# Function to initialize the database and create the 'users' table if it does not exist
+DB_FILE = 'users.db'
+
+# Initialize Database
 def init_user():
-    """
-    Initializes the SQLite database by creating the 'users' table if it does not already exist.
-    The table includes:
-        - user_id: Auto-incremented primary key
-        - username: User's name (TEXT)
-        - email: Unique user email (TEXT)
-        - password: Encrypted user password (TEXT)
-        - created_at: Timestamp of account creation (TEXT)
-    """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('''
@@ -32,24 +26,20 @@ def init_user():
     cursor.close()
     conn.close()
 
-# API endpoint to register a new user
+# Serve Frontend Pages
+@app.route('/')
+def home():
+    return render_template("index.html")
+
+
+# User Registration
 @app.route('/register', methods=['POST'])
 def register():
-    """
-    Handles user registration by accepting JSON input with 'username', 'email', and 'password'.
-    - Encrypts the password using bcrypt before storing it in the database.
-    - Ensures that the email is unique.
-    
-    Returns:
-        - 201 Created: If the user is registered successfully.
-        - 400 Bad Request: If required fields are missing or if the email is already registered.
-    """
     data = request.json
     if not data or not all(k in data for k in ("username", "email", "password")):
-        return jsonify({"error": "Missing required fields"}), 400  # Missing input data
+        return jsonify({"error": "Missing required fields"}), 400  
 
-    # Encrypt the password using bcrypt
-    hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
+    hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     try:
         conn = sqlite3.connect(DB_FILE)
@@ -61,7 +51,28 @@ def register():
         conn.close()
         return jsonify({"message": "User registered successfully"}), 201
     except sqlite3.IntegrityError:
-        return jsonify({"error": "Email already registered"}), 400  # Email must be unique
+        return jsonify({"error": "Email already registered"}), 400  
+
+
+
+# User Login Endpoint (Verify Password)
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    if not data or not all(k in data for k in ("email", "password")):
+        return jsonify({"error": "Missing required fields"}), 400  
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, username, password FROM users WHERE email = ?", (data['email'],))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if user and bcrypt.checkpw(data['password'].encode('utf-8'), user[2].encode('utf-8')):
+        return jsonify({"message": "Login successful!", "user_id": user[0], "username": user[1]}), 200
+    return jsonify({"error": "Invalid email or password"}), 401
+
 
 # API endpoint to retrieve all registered users (excluding passwords)
 @app.route('/users', methods=['GET'])
