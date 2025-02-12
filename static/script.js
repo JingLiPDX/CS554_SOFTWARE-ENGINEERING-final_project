@@ -1,11 +1,68 @@
 // Budget
-// Check if user is logged in
 document.addEventListener("DOMContentLoaded", function () {
-  let user = localStorage.getItem("loggedInUser");
-  if (user) {
-    document.getElementById("welcomeMessage").textContent =
-      "Welcome, " + user + "!";
-  }
+  const apiUrl = "http://127.0.0.1:5000"; // Flask backend URL
+
+  // ✅ Register User
+  window.registerUser = function () {
+    const username = document.getElementById("signupName").value;
+    const email = document.getElementById("signupEmail").value;
+    const password = document.getElementById("signupPassword").value;
+
+    if (!username || !email || !password) {
+      alert("All fields are required.");
+      return;
+    }
+
+    fetch(`${apiUrl}/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, email, password }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        alert(data.message || data.error);
+        if (data.message) {
+          // Close modal and reset form
+          document.getElementById("signupModal").classList.remove("show");
+          document.getElementById("signupName").value = "";
+          document.getElementById("signupEmail").value = "";
+          document.getElementById("signupPassword").value = "";
+        }
+      })
+      .catch((error) => console.error("Error:", error));
+  };
+
+  // ✅ Login User
+  window.loginUser = function () {
+    const email = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+
+    if (!email || !password) {
+      alert("Email and password are required.");
+      return;
+    }
+
+    fetch(`${apiUrl}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.message) {
+          alert("Login successful!");
+          sessionStorage.setItem("username", data.username);
+          window.location.href = "dashboard.html"; // Redirect to dashboard
+        } else {
+          alert(data.error);
+        }
+      })
+      .catch((error) => console.error("Error:", error));
+  };
 });
 
 function registerUser() {
