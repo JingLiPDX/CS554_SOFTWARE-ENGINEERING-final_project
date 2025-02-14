@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="CSS.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-light" onload="checkLogin()">
+    
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Expense Tracker</a>
+            <span id="welcomeUser" class="text-white"></span>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h3>Welcome to Your Expense Tracker</h3>
+
+        <!-- Budget Section -->
+        <div class="card p-3 mb-3">
+            <h5>Monthly Budget</h5>
+            <input type="number" id="budgetAmount" class="form-control" placeholder="Enter Budget Amount">
+            <button class="btn btn-success mt-2" onclick="setBudget()">Save Budget</button>
+            <div class="progress mt-3">
+                <div id="budgetProgress" class="progress-bar bg-warning" style="width: 0%">0%</div>
+            </div>
+        </div>
+
+        <!-- Income & Expense Form -->
+        <div class="card p-3">
+            <h5>Income / Expense</h5>
+            <form id="transactionForm">
+                <input type="number" id="amount" class="form-control my-2" placeholder="Amount">
+                <input type="date" id="date" class="form-control my-2">
+                <select id="category" class="form-control my-2">
+                    <option value="Food">Food</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Entertainment">Entertainment</option>
+                </select>
+                <textarea id="description" class="form-control my-2" placeholder="Description"></textarea>
+                <button type="submit" class="btn btn-primary">Add Transaction</button>
+            </form>
+        </div>
+
+        <!-- Transaction List -->
+        <div class="card mt-3 p-3">
+            <h5>Transaction History</h5>
+            <ul id="transactionList" class="list-group"></ul>
+        </div>
+
+        <!-- Data Visualization -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h5>Spending by Category</h5>
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="col-md-6">
+                <h5>Income vs Expenses</h5>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
+
+    <div class="container mt-4">
+      <h3 id="welcomeMessage">Welcome!</h3>
+      <p>Track your income and expenses here.</p>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
