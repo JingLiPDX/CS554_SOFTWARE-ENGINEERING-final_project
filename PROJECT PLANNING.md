@@ -4,38 +4,41 @@ Project planning: 1/28
 
 1, Core features:
 Income and Expense Tracking:
-●	Users can log income and expenses with details (amount, date, category, description).
-●	Ability to edit and delete entries. 
+Users can log income and expenses with details (amount, date, category, description).
+Ability to edit and delete entries. 
+
 Category Management:
-●	Predefined categories (e.g., Food, Rent, Utilities, Clothes,  Entertainment).
-●	Custom categories that users can create, edit, and delete.
+Predefined categories (e.g., Food, Rent, Utilities, Clothes,  Entertainment).
+Custom categories that users can create, edit, and delete.
+
 Budget Setting:
 Visual indicators (e.g., progress bars) showing budget utilization( for total budget).
-Expense Categorization:
-●	Automatic or manual categorization of expenses based on user inputs.
+
+Expense Categorization:	Automatic or manual categorization of expenses based on user inputs.
+
 Data Visualization:
-●	Pie charts for category-wise spending.
-●	Line graphs for income vs. expenses over time. 
-●	Monthly and yearly summaries.
-Alerts and Notifications:
-●	Alerts for budget nearing limits.
+Pie charts for category-wise spending.
+Line graphs for income vs. expenses over time. 
+Monthly and yearly summaries.
+
+Alerts and Notifications: Alerts for budget nearing limits.
+
 2, MVP (Minimum viable product)
 Income and Expense Tracking:
-●	Log income and expenses with details (amount, date, category, and description).
-●	Ability to view, edit, and delete entries.
- Category Management:
-●	Predefined categories (e.g., Food, Rent, Utilities, Entertainment).
- Budget Setting:
-●	Set a monthly budget.
- Basic Data Visualization:
-●	Pie chart showing category-wise spending for the current month.
-●	Bar chart comparing total income and expenses.
-Secure Authentication:
-●	User login with email and password.
+Log income and expenses with details (amount, date, category, and description).
+Ability to view, edit, and delete entries.
+
+Category Management:
+Predefined categories (e.g., Food, Rent, Utilities, Entertainment).
+Set a monthly budget.
+Pie chart showing category-wise spending for the current month.
+Bar chart comparing total income and expenses.
+User login with email and password.
 
 3, User Stories:
 Default Categories:
 As a user, I want the system to provide predefined categories (e.g., Food, Rent, Utilities, Entertainment) so that I can quickly start tracking my expenses without creating categories from scratch.
+
 Assigning Transactions to Categories:
 As a user, I want to assign my income and expenses to specific categories so that I can understand how much I spend in each area.
 Customizable Time-Based Visualization
