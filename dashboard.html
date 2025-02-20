@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Expense Tracker{% endblock %}
+
+{% block navbar_buttons %}
+    <span id="welcomeUser" class="text-white">Welcome, {{ username }}</span>
+    <button class="btn btn-danger" onclick="logout()">Logout</button>
+{% endblock %}
+
+{% block content %}
+    <h3>Welcome, {{ username }} to Your Expense Tracker</h3>
+
+    <!-- Budget Section -->
+    <div class="card p-3 mb-3">
+        <h5>Monthly Budget</h5>
+        <input type="number" id="budgetAmount" class="form-control" placeholder="Enter Budget Amount">
+        <button class="btn btn-success mt-2" onclick="setBudget()">Save Budget</button>
+        <div class="progress mt-3">
+            <div id="budgetProgress" class="progress-bar bg-warning" style="width: 0%">0%</div>
+        </div>
+    </div>
+
+    <!-- Income & Expense Form -->
+    <div class="card p-3">
+        <h5>Income / Expense</h5>
+        <form id="transactionForm">
+            <input type="number" id="amount" class="form-control my-2" placeholder="Amount">
+            <input type="date" id="date" class="form-control my-2">
+            <select id="category" class="form-control my-2">
+                <option value="Food">Food</option>
+                <option value="Rent">Rent</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Entertainment">Entertainment</option>
+            </select>
+            <textarea id="description" class="form-control my-2" placeholder="Description"></textarea>
+            <button type="submit" class="btn btn-primary">Add Transaction</button>
+        </form>
+    </div>
+
+    <!-- Transaction List -->
+    <div class="card mt-4 p-3">
+        <h5 class="card-header bg-light">Transaction History</h5>
+        <div class="card-body">
+            <ul id="transactionList" class="list-group">
+                {% for transaction in transactions %}
+                <li class="list-group-item">
+                    <strong>${{ transaction[0] }}</strong> - {{ transaction[1] }} ({{ transaction[2] }})<br>
+                    <small>{{ transaction[3] }}</small>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    
+
+    <!-- Data Visualization -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h5>Spending by Category</h5>
+            <canvas id="pieChart"></canvas>
+        </div>
+        <div class="col-md-6">
+            <h5>Income vs Expenses</h5>
+            <canvas id="barChart"></canvas>
+        </div>
+    </div>
+{% endblock %}
