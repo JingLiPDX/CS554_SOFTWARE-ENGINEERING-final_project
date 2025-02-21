@@ -96,13 +96,21 @@ Ensures session persistence for logged-in users.
 Complete work: 
 
 \sqrt  user registration
+
 \sqrt  user login
+
 \sqrt  user log transaction
+
 \sqrt  user can view their transaction history
+
 \sqrt  predefined categories 
+
 \sqrt  user can assign transactions to categories
+
 \sqrt  Bar chart comparing total income vs. expenses
+
 \sqrt  Backend database store user inputs
+
 
 
 
