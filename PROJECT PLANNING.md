@@ -1,5 +1,7 @@
 Project name: Spendwise
+
 Project teammates: Jing Li, Chih-Yu Tsai
+
 Project planning: 1/28
 
 1, Core features:
