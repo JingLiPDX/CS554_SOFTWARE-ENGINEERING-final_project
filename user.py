@@ -3,6 +3,8 @@ import sqlite3
 import bcrypt
 from flask_cors import CORS
 from datetime import datetime, timezone
+from typing import List, Tuple
+import os
 
 app = Flask(__name__, template_folder="templates", static_folder='static')
 CORS(app)
@@ -45,6 +47,23 @@ def init_db():
 @app.route('/')
 def home():
     return render_template("index.html")
+
+
+# for unit testing purpose 
+
+def is_user_logged_in() -> bool:
+    """Checks if a user is logged in based on session."""
+    return 'user_id' in session and 'username' in session
+
+def get_user_id() -> int:
+    """Returns the user_id from the session."""
+    return session['user_id']
+
+def get_username() -> str:
+    """Returns the username from the session."""
+    return session['username']
+
+
 
 @app.route("/dashboard")
 def dashboard():
@@ -155,26 +174,23 @@ def add_transaction():
 
 @app.route("/transactions", methods=["GET"])
 def get_transactions():
-    if 'user_id' not in session:
-        return jsonify([])
-
-    user_id = session['user_id']
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT amount, category, date, description FROM transactions WHERE user_id = ?",
-        (user_id,)
-    )
+    
+    cursor.execute("""
+        SELECT amount, category, date, description 
+        FROM transactions WHERE user_id = ?
+        ORDER BY date DESC
+    """, (session.get("user_id"),))
+
     transactions = cursor.fetchall()
     conn.close()
-
-    transactions_list = [
-        {"amount": t[0], "category": t[1], "date": t[2], "description": t[3]}
-        for t in transactions
-    ]
     
-    print(f"✅ Transactions for user {user_id}: {transactions_list}")  # Debugging
-    return jsonify(transactions_list)
+    return jsonify([
+        {"amount": row[0], "category": row[1], "date": row[2], "description": row[3]}
+        for row in transactions
+    ])
+
 
 
 # Main entry point to run the Flask app
