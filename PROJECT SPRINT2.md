@@ -21,11 +21,23 @@ Pie chart display spending, bar chart comparing total incomes vs. expenses.
 
 3, complete work:
 
-a, user income, spending transaction history
+ a, user registration
+ 
+ b, user login
+ 
+ c, user log transaction
+ 
+ d, user can view their transaction history
+ 
+ e, predefined categories
+ 
+ f, user can assign transactions to categories
+ 
+ g, bar chart comparing incomes vs expenses
 
-b, bar chart comparing incomes vs expenses
+ h, pie chart display each spending categories
 
-c, pie chart display each spending categories
+ i, backend database store user expenses transaction history per user account.
 
-d, backend database store user expenses transaction history per user account.
+ j, backend database store user id
 
