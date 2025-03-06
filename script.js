@@ -1,4 +1,13 @@
-const apiUrl = "http://127.0.0.1:5000"; // Flask backend URL
+const apiUrl = "http://127.0.0.1:5000"; // Corrected and consistently used variable name (camelCase)
+
+// Global variables
+let currentBudget = 0;
+let userId = null; // Start with null, set dynamically after login
+let currentMonth = new Date().toISOString().slice(0, 7); // Default to current month (YYYY-MM)
+
+// Global variables to store chart instances
+let pieChartInstance = null; // Store the pie chart instance
+let barChartInstance = null; // Store the bar chart instance
 
 document.addEventListener("DOMContentLoaded", function () {
   console.log("✅ Script Loaded!");
@@ -20,9 +29,52 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Load transactions when page loads
-  loadTransactions();
+  // Check login status and load user data
+  const storedUserId = sessionStorage.getItem("userId");
+  if (storedUserId) {
+    userId = storedUserId;
+    loadUserData(); // Load data if userId exists
+  } else {
+    console.log("❌ No user ID found. Please log in.");
+  }
+
+  // Welcome user if on dashboard
+  if (window.location.pathname === "/dashboard") {
+    const username = sessionStorage.getItem("username");
+    if (username) {
+      document.getElementById(
+        "welcomeUser"
+      ).textContent = `Hello, ${username}!`;
+    } else {
+      window.location.href = "/login"; // Redirect to login if not logged in
+    }
+  }
+
+  // Add form submission for login page if on login page (root '/')
+  if (window.location.pathname === "/") {
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+      loginForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        loginUser(); // Call loginUser on form submission
+      });
+    }
+
+    const signupForm = document.getElementById("signupForm");
+    if (signupForm) {
+      signupForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        registerUser(); // Call registerUser on form submission
+      });
+    }
+  }
 });
+
+// Function to set userId after login (example)
+function setUserId(id) {
+  userId = id;
+  sessionStorage.setItem("userId", userId);
+}
 
 // ✅ Register User
 window.registerUser = function () {
@@ -59,9 +111,9 @@ window.registerUser = function () {
     .catch((error) => console.error("Error:", error));
 };
 
-// user login in dashboard
+// User login in dashboard
 window.loginUser = function () {
-  console.log("Login function called"); // Debugging check
+  console.log("Login function called");
   const email = document.getElementById("loginEmail").value;
   const password = document.getElementById("loginPassword").value;
 
@@ -70,17 +122,30 @@ window.loginUser = function () {
     return;
   }
 
-  fetch("http://127.0.0.1:5000/login", {
+  fetch(`${apiUrl}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   })
     .then((response) => response.json())
     .then((data) => {
+      console.log("Login response:", data);
       if (data.message === "Login successful!") {
-        alert("Login successful!");
-        sessionStorage.setItem("username", data.username);
-        window.location.href = "/dashboard";
+        // Extract userId and username from the response, handle potential variations
+        if (data.userId && data.username) {
+          setUserId(data.userId); // Set the dynamic userId
+          sessionStorage.setItem("username", data.username); // Keep username for display
+          alert("Login successful!");
+          window.location.href = "/dashboard";
+        } else if (data.user_id && data.username) {
+          // Handle potential lowercase 'user_id'
+          setUserId(data.user_id); // Set the dynamic userId
+          sessionStorage.setItem("username", data.username); // Keep username for display
+          alert("Login successful!");
+          window.location.href = "/dashboard";
+        } else {
+          alert("❌ Login failed: User ID or username not provided by server.");
+        }
       } else {
         alert("Invalid email or password.");
       }
@@ -90,77 +155,385 @@ window.loginUser = function () {
 
 // ✅ Logout function
 window.logout = function () {
-  sessionStorage.removeItem("username");
-  window.location.href = "/";
+  fetch(`${apiUrl}/logout`)
+    .then(() => {
+      userId = null; // Clear user ID
+      currentBudget = 0; // Reset budget locally (optional, since it’s stored on backend)
+      sessionStorage.clear(); // Clear sessionStorage
+      alert("Logged out successfully!");
+      window.location.href = "/"; // Redirect to home
+    })
+    .catch((error) => console.error("Logout Error:", error));
 };
 
-// ✅ Ensure user stays logged in
-window.checkLogin = function () {
-  let user = sessionStorage.getItem("username");
-  if (!user) {
-    window.location.href = "/";
-  } else {
-    document.getElementById("welcomeUser").textContent = "Hello, " + user + "!";
-  }
-};
-
-// ✅ Budget Setting
+// Set budget function (specific to the current user, saved to backend)
 window.setBudget = function () {
-  let budget = document.getElementById("budgetAmount").value;
-  if (budget > 0) {
-    localStorage.setItem("budget", budget);
-    document.getElementById("budgetProgress").style.width = "0%";
-    document.getElementById("budgetProgress").textContent = "0%";
-    alert("Budget set successfully!");
+  if (!userId) {
+    alert("❌ Please log in to set a budget.");
+    return;
   }
-};
 
-// Handle Transaction history
-document
-  .getElementById("transactionForm")
-  .addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    let amount = document.getElementById("amount").value;
-    let category = document.getElementById("category").value;
-    let date = document.getElementById("date").value;
-    let description = document.getElementById("description").value;
-
-    if (!amount || !date) {
-      alert("Please enter amount and date!");
-      return;
-    }
-
-    console.log("🔹 Sending transaction:", {
-      amount,
-      category,
-      date,
-      description,
-    });
-
-    fetch("http://127.0.0.1:5000/add_transaction", {
+  let budgetInput = document.getElementById("budgetAmount").value;
+  if (budgetInput > 0) {
+    currentBudget = parseFloat(budgetInput); // Set the current user's budget
+    // Save budget to backend
+    fetch(`${apiUrl}/user/budget`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount, category, date, description }),
+      body: JSON.stringify({ userId: userId, budget: currentBudget }),
     })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("✅ Server response:", data);
-        alert(data.message);
-        loadTransactions(); // Refresh transaction history
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
       })
-      .catch((error) => console.error("❌ Fetch error:", error));
-  });
+      .then(() => {
+        alert("✅ Budget set successfully for this user!");
+        loadUserData(currentMonth); // Update with current month data
+      })
+      .catch((error) => console.error("❌ Error saving budget:", error));
+  } else {
+    alert("❌ Please enter a valid budget amount greater than 0.");
+  }
+};
 
-// add transaction
+// Load user data function (using dynamic userId, grouped by month)
+function loadUserData(selectedMonth = currentMonth) {
+  if (!userId) {
+    console.error("❌ User ID not set. Please log in.");
+    alert("Please log in to view your data.");
+    window.location.href = "/login"; // Redirect to login page if no userId
+    return;
+  }
+
+  // Fetch transactions for the user
+  fetch(`${apiUrl}/transactions?userId=${encodeURIComponent(userId)}`)
+    .then((response) => response.json())
+    .then((data) => {
+      console.log("✅ Transactions received:", data);
+
+      const transactionList = document.getElementById("transactionList");
+      transactionList.innerHTML = ""; // Clear previous list
+
+      // Group transactions by month
+      const transactionsByMonth = {};
+      data.forEach((transaction) => {
+        const month = transaction.date.slice(0, 7);
+        if (!transactionsByMonth[month]) {
+          transactionsByMonth[month] = {
+            income: 0,
+            expenses: 0,
+            categories: {},
+          };
+        }
+        const amount = parseFloat(transaction.amount) || 0;
+        if (
+          transaction.category === "Income" ||
+          transaction.category === "Salary"
+        ) {
+          transactionsByMonth[month].income += amount;
+        } else {
+          transactionsByMonth[month].expenses += Math.abs(amount);
+          transactionsByMonth[month].categories[transaction.category] =
+            (transactionsByMonth[month].categories[transaction.category] || 0) +
+            Math.abs(amount);
+        }
+
+        // Add to transaction list (grouped by month)
+        const li = document.createElement("li");
+        li.className = "list-group-item";
+        li.innerHTML = `<strong>$${Math.abs(amount)}</strong> - ${
+          transaction.category
+        } (${transaction.date})<br>
+                                <small>${transaction.description}</small>`;
+        transactionList.appendChild(li);
+      });
+
+      // Get data for the selected month
+      const monthData = transactionsByMonth[selectedMonth] || {
+        income: 0,
+        expenses: 0,
+        categories: {},
+      };
+      const totalIncome = monthData.income;
+      const totalExpenses = monthData.expenses;
+      const categoryTotals = monthData.categories;
+
+      // Fetch user's budget from backend (persists per userId)
+      fetch(`${apiUrl}/user/budget?userId=${encodeURIComponent(userId)}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((budgetData) => {
+          if (budgetData.budget !== undefined) {
+            currentBudget = parseFloat(budgetData.budget) || 0;
+            console.log("✅ Budget loaded:", currentBudget);
+          } else {
+            console.warn("No budget found for user, setting to 0");
+            currentBudget = 0;
+          }
+          // Update pie chart for the selected month and bar chart for all relevant months
+          updatePieChart(categoryTotals);
+          updateBarChart();
+        })
+        .catch((error) => {
+          console.error("❌ Fetch error (budget):", error);
+          currentBudget = 0; // Default to 0 if fetch fails
+          updatePieChart(categoryTotals);
+          updateBarChart();
+        });
+
+      // Add month selector
+      updateMonthSelector(transactionsByMonth);
+    })
+    .catch((error) => console.error("❌ Fetch error (transactions):", error));
+}
+
+// Function to update month selector (only updates pie chart)
+function updateMonthSelector(transactionsByMonth) {
+  const monthSelect = document.getElementById("monthSelect");
+  console.log("Checking for monthSelect element:", monthSelect);
+  if (!monthSelect) {
+    const select = document.createElement("select");
+    select.id = "monthSelect";
+    select.className = "form-control mb-2";
+    select.onchange = (e) => {
+      currentMonth = e.target.value; // Update currentMonth
+      loadPieChartData(currentMonth);
+    };
+    if (Object.keys(transactionsByMonth).length > 0) {
+      const validMonths = ["2025-01", "2025-02", "2025-03", "2025-04"];
+      validMonths.forEach((month) => {
+        if (transactionsByMonth[month]) {
+          const option = document.createElement("option");
+          option.value = month;
+          option.textContent = new Date(month + "-01").toLocaleString(
+            "default",
+            {
+              month: "long",
+              year: "numeric",
+            }
+          );
+          select.appendChild(option);
+        }
+      });
+      console.log(
+        "Inserting monthSelect dropdown into DOM with months:",
+        validMonths
+      );
+      // Ensure the container exists before inserting
+      const container = document.querySelector(".container");
+      if (container) {
+        container.insertBefore(select, document.querySelector(".row.mt-4"));
+      } else {
+        console.error(
+          "❌ Container not found in DOM for month selector insertion."
+        );
+      }
+    } else {
+      console.warn("No transactions found to populate month selector.");
+    }
+  } else {
+    console.log("MonthSelect already exists, skipping creation.");
+  }
+}
+
+// Load pie chart data for a specific month
+function loadPieChartData(selectedMonth) {
+  if (!userId) {
+    console.error("❌ User ID not set. Please log in.");
+    alert("Please log in to view your data.");
+    window.location.href = "/login";
+    return;
+  }
+
+  fetch(`${apiUrl}/transactions?userId=${encodeURIComponent(userId)}`)
+    .then((response) => response.json())
+    .then((data) => {
+      console.log("✅ Transactions received for pie chart:", data);
+
+      // Group transactions by month
+      const transactionsByMonth = {};
+      data.forEach((transaction) => {
+        const month = transaction.date.slice(0, 7); // Extract YYYY-MM
+        if (!transactionsByMonth[month]) {
+          transactionsByMonth[month] = { categories: {} };
+        }
+        const amount = parseFloat(transaction.amount) || 0;
+        if (
+          transaction.category !== "Income" &&
+          transaction.category !== "Salary"
+        ) {
+          transactionsByMonth[month].categories[transaction.category] =
+            (transactionsByMonth[month].categories[transaction.category] || 0) +
+            Math.abs(amount);
+        }
+      });
+
+      // Get data for the selected month
+      const categoryTotals =
+        transactionsByMonth[selectedMonth]?.categories || {};
+
+      // Update only the pie chart with the selected month's data
+      updatePieChart(categoryTotals);
+    })
+    .catch((error) => console.error("❌ Fetch error for pie chart:", error));
+}
+
+// Update only the pie chart
+function updatePieChart(categoryTotals) {
+  let pieCtx = document.getElementById("pieChart").getContext("2d");
+
+  if (pieChartInstance) {
+    pieChartInstance.destroy();
+  }
+
+  pieChartInstance = new Chart(pieCtx, {
+    type: "pie",
+    data: {
+      labels: Object.keys(categoryTotals),
+      datasets: [
+        {
+          label: `Spending by Category - ${new Date(
+            currentMonth + "-01"
+          ).toLocaleString("default", { month: "long", year: "numeric" })}`,
+          data: Object.values(categoryTotals).map(
+            (value) => Math.abs(value) || 0
+          ),
+          backgroundColor: [
+            "#ff6384", // Grocery
+            "#36a2eb", // Insurance
+            "#ffce56", // Personal Care
+            "#4bc0c0", // Restaurant
+            "#9966ff", // Entertainment
+            "#ff9f40", // Food
+            "#8c564b", // Rent
+          ],
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "bottom" },
+        title: {
+          display: true,
+          text: `Spending by Category - ${new Date(
+            currentMonth + "-01"
+          ).toLocaleString("default", { month: "long", year: "numeric" })}`,
+        },
+      },
+    },
+  });
+}
+
+// Update bar chart (maintain all months, unchanged)
+function updateBarChart() {
+  if (!userId) {
+    console.error("❌ User ID not set. Please log in.");
+    alert("Please log in to view your data.");
+    window.location.href = "/login";
+    return;
+  }
+
+  fetch(`${apiUrl}/transactions?userId=${encodeURIComponent(userId)}`)
+    .then((response) => response.json())
+    .then((data) => {
+      const transactionsByMonth = {};
+      data.forEach((transaction) => {
+        const month = transaction.date.slice(0, 7); // Extract YYYY-MM
+        // Only include months from January 2025 to March 2025
+        if (month >= "2025-02" && month <= "2025-12") {
+          if (!transactionsByMonth[month]) {
+            transactionsByMonth[month] = { income: 0, expenses: 0 };
+          }
+          const amount = parseFloat(transaction.amount) || 0;
+          if (
+            transaction.category === "Income" ||
+            transaction.category === "Salary"
+          ) {
+            transactionsByMonth[month].income += amount;
+          } else {
+            transactionsByMonth[month].expenses += Math.abs(amount); // Use absolute value for expenses
+          }
+        }
+      });
+
+      const months = Object.keys(transactionsByMonth).sort(); // Sort months chronologically
+      const barData = {
+        labels: months.map((month) =>
+          new Date(month + "-01").toLocaleString("default", {
+            month: "long",
+            year: "numeric",
+          })
+        ),
+        datasets: [
+          {
+            label: "Monthly Budget",
+            data: months.map(() => currentBudget || 0), // Use currentBudget for all months
+            backgroundColor: "#ff0000", // Red
+          },
+          {
+            label: "Income",
+            data: months.map(
+              (month) => transactionsByMonth[month]?.income || 0
+            ),
+            backgroundColor: "#0000ff", // Blue
+          },
+          {
+            label: "Expenses",
+            data: months.map(
+              (month) => transactionsByMonth[month]?.expenses || 0
+            ),
+            backgroundColor: "#ffff00", // Yellow
+          },
+        ],
+      };
+
+      let barCtx = document.getElementById("barChart").getContext("2d");
+
+      if (barChartInstance) {
+        barChartInstance.destroy();
+      }
+      barChartInstance = new Chart(barCtx, {
+        type: "bar",
+        data: barData,
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: "top" },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Amount ($)" },
+            },
+            x: { title: { display: true, text: "Month" } },
+          },
+        },
+      });
+    })
+    .catch((error) => console.error("❌ Fetch error for bar chart:", error));
+}
+
+// Handle Transaction Submission (Income or Expense)
 function addTransaction(type) {
+  if (!userId) {
+    alert("❌ Please log in to add a transaction.");
+    return;
+  }
+
   let amount, date, category, description;
 
   if (type === "income") {
     amount = document.getElementById("incomeAmount").value;
     date = document.getElementById("incomeDate").value;
-    category = "Income"; // Special category for income
     description = document.getElementById("incomeDescription").value;
+    category = "Income";
   } else {
     amount = document.getElementById("amount").value;
     date = document.getElementById("date").value;
@@ -169,256 +542,28 @@ function addTransaction(type) {
   }
 
   if (!amount || !date) {
-    alert("Please enter an amount and date.");
+    alert("Please enter amount and date!");
     return;
   }
 
-  // Convert amount to a number
-  amount = parseFloat(amount);
+  const transactionData = {
+    userId: userId, // Include user ID
+    amount:
+      type === "expense" ? -Math.abs(parseFloat(amount)) : parseFloat(amount),
+    category,
+    date,
+    description,
+  };
 
-  fetch("http://127.0.0.1:5000/add_transaction", {
+  fetch(`${apiUrl}/add_transaction`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount, category, date, description }),
+    body: JSON.stringify(transactionData),
   })
     .then((response) => response.json())
     .then((data) => {
       alert(data.message);
-      loadTransactions(); // Refresh transactions
-    })
-    .catch((error) => console.error("❌ Error:", error));
-}
-
-// load transaction
-function loadTransactions() {
-  fetch("http://127.0.0.1:5000/transactions")
-    .then((response) => response.json())
-    .then((data) => {
-      console.log("✅ Transactions received:", data);
-
-      const transactionList = document.getElementById("transactionList");
-      transactionList.innerHTML = ""; // Clear previous list
-
-      let totalIncome = 0;
-      let totalExpenses = 0;
-      let categoryTotals = {};
-
-      data.forEach((transaction) => {
-        const li = document.createElement("li");
-        li.className = "list-group-item";
-        li.innerHTML = `<strong>$${transaction.amount}</strong> - ${transaction.category} (${transaction.date})<br>
-                              <small>${transaction.description}</small>`;
-        transactionList.appendChild(li);
-
-        // Categorizing transactions
-        if (transaction.category === "Income") {
-          totalIncome += parseFloat(transaction.amount);
-        } else {
-          totalExpenses += parseFloat(transaction.amount);
-          categoryTotals[transaction.category] =
-            (categoryTotals[transaction.category] || 0) +
-            parseFloat(transaction.amount);
-        }
-      });
-
-      updateCharts(totalIncome, totalExpenses, categoryTotals);
+      loadUserData(currentMonth); // Refresh transactions and charts for the current month
     })
     .catch((error) => console.error("❌ Fetch error:", error));
 }
-
-// Handle Income Submission
-document
-  .getElementById("incomeForm")
-  .addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    let amount = document.getElementById("incomeAmount").value;
-    let date = document.getElementById("incomeDate").value;
-    let description = document.getElementById("incomeDescription").value;
-
-    if (!amount || !date) {
-      alert("Please enter amount and date!");
-      return;
-    }
-
-    fetch("http://127.0.0.1:5000/add_transaction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: parseFloat(amount),
-        category: "Income",
-        date,
-        description,
-      }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        alert(data.message);
-        updateCharts();
-      })
-      .catch((error) => console.error("Error:", error));
-  });
-
-// Handle Expense Submission
-document
-  .getElementById("expenseForm")
-  .addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    let amount = document.getElementById("expenseAmount").value;
-    let date = document.getElementById("expenseDate").value;
-    let category = document.getElementById("expenseCategory").value;
-    let description = document.getElementById("expenseDescription").value;
-
-    if (!amount || !date || !category) {
-      alert("Please enter amount, date, and category!");
-      return;
-    }
-
-    fetch("http://127.0.0.1:5000/add_transaction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: -Math.abs(parseFloat(amount)),
-        category,
-        date,
-        description,
-      }), // Negative for expenses
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        alert(data.message);
-        updateCharts();
-      })
-      .catch((error) => console.error("Error:", error));
-  });
-
-//chart for visual display
-function updateCharts(totalIncome, totalExpenses, categoryTotals) {
-  let pieCtx = document.getElementById("pieChart").getContext("2d");
-  let barCtx = document.getElementById("barChart").getContext("2d");
-
-  // Pie Chart (Spending by Category)
-  new Chart(pieCtx, {
-    type: "pie",
-    data: {
-      labels: Object.keys(categoryTotals),
-      datasets: [
-        {
-          label: "Spending by Category",
-          data: Object.values(categoryTotals),
-          backgroundColor: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0"],
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: "bottom" },
-      },
-    },
-  });
-
-  // Bar Chart (Income vs Expenses)
-  new Chart(barCtx, {
-    type: "bar",
-    data: {
-      labels: ["Income", "Expenses"],
-      datasets: [
-        {
-          label: "Amount ($)",
-          data: [totalIncome, totalExpenses],
-          backgroundColor: ["green", "red"],
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-      },
-      scales: {
-        y: { beginAtZero: true },
-      },
-    },
-  });
-}
-
-//Run when page loads
-document.addEventListener("DOMContentLoaded", function () {
-  fetch("/transactions") // Ensure Flask has a `/transactions` API
-    .then((response) => response.json())
-    .then((data) => {
-      console.log("Transactions:", data);
-
-      let transactionList = document.getElementById("transactionList");
-      transactionList.innerHTML = ""; // Clear old entries
-
-      data.forEach((transaction) => {
-        let listItem = document.createElement("li");
-        listItem.classList.add("list-group-item");
-        listItem.innerHTML = `<strong>$${transaction.amount}</strong> - ${transaction.category} (${transaction.date})<br>
-                                <small>${transaction.description}</small>`;
-        transactionList.appendChild(listItem);
-      });
-    })
-    .catch((error) => console.error("❌ Error fetching transactions:", error));
-});
-
-window.logout = function () {
-  fetch("/logout")
-    .then(() => {
-      sessionStorage.removeItem("username");
-      window.location.href = "/"; // Redirect to home
-    })
-    .catch((error) => console.error("Logout Error:", error));
-};
-
-// Run only if user is on the dashboard page
-if (window.location.pathname === "/dashboard") {
-  const username = sessionStorage.getItem("username");
-  if (username) {
-    document.getElementById("welcomeUser").textContent = `Hello, ${username}!`;
-  } else {
-    window.location.href = "/"; // Redirect to login if not logged in
-  }
-
-  // Only add event listener if form exists
-  const transactionForm = document.getElementById("transactionForm");
-  if (transactionForm) {
-    transactionForm.addEventListener("submit", function (event) {
-      event.preventDefault();
-      console.log("Transaction form submitted!");
-    });
-  }
-}
-
-window.logout = function () {
-  fetch("/logout")
-    .then(() => {
-      sessionStorage.removeItem("username");
-      window.location.href = "/"; // Redirect to home
-    })
-    .catch((error) => console.error("Logout Error:", error));
-};
-
-/*
-// Run only if user is on the dashboard page
-if (window.location.pathname === "/dashboard") {
-  const username = sessionStorage.getItem("username");
-  if (username) {
-    document.getElementById("welcomeUser").textContent = `Hello, ${username}!`;
-  } else {
-    window.location.href = "/"; // Redirect to login if not logged in
-  }
-
-  // Only add event listener if form exists
-  const transactionForm = document.getElementById("transactionForm");
-  if (transactionForm) {
-    transactionForm.addEventListener("submit", function (event) {
-      event.preventDefault();
-      console.log("Transaction form submitted!");
-    });
-  }
-}
-*/
