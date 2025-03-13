@@ -1,3 +1,8 @@
+# This project is for Software engineering final project
+# This project is a personal finacial tracker web application build with Flask
+# Project author: Jing Li and Chiyu -Tsai
+# Project date: 01-02-2025
+
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 import bcrypt
@@ -118,7 +123,7 @@ def register():
         cursor.execute("INSERT INTO users (username, email, password, created_at) VALUES (?, ?, ?, ?)",
                        (data['username'], data['email'], hashed_password, datetime.now(timezone.utc).isoformat()))
         
-        user_id = cursor.lastrowid  # Get the newly created user_id
+        user_id = cursor.lastrowid  
         cursor.execute("INSERT INTO budgets (user_id, budget) VALUES (?, 0)", (user_id,))
         
         conn.commit()
@@ -206,28 +211,6 @@ def add_transaction():
     except Exception as e:
         print("❌ Error inserting transaction:", e)
         return jsonify({'message': 'Database error'}), 500
-
-'''
-# Get Transaction endpoint
-@app.route("/transactions", methods=["GET"])
-def get_transactions():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT amount, category, date, description 
-        FROM transactions WHERE user_id = ?
-        ORDER BY date DESC
-    """, (session.get("user_id"),))
-
-    transactions = cursor.fetchall()
-    conn.close()
-    
-    return jsonify([
-        {"amount": row[0], "category": row[1], "date": row[2], "description": row[3]}
-        for row in transactions
-    ])
-'''
 
 # Get Transaction endpoint
 @app.route("/transactions", methods=["GET"])
